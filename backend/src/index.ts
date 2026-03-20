@@ -8,6 +8,9 @@ import { Server } from 'socket.io'
 import prisma from './utils/db'
 import redis from './utils/redis'
 import logger from './utils/logger'
+import pushRoutes from './routes/push.routes'
+import { startReminderJob, startHabitRenewalJob } from './jobs/reminder.job'
+
 
 import authRoutes from './routes/auth.routes'
 import chatRoutes from './routes/chat.routes'
@@ -31,6 +34,7 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '10mb' }))
 
+
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -45,6 +49,7 @@ const aiLimiter = rateLimit({
 app.use('/api/auth', generalLimiter, authRoutes)
 app.use('/api/chat', aiLimiter, chatRoutes)
 app.use('/api/events', generalLimiter, eventsRoutes)
+app.use('/api/push', generalLimiter, pushRoutes)
 
 app.get('/health', async (_req, res) => {
   try {
@@ -92,11 +97,16 @@ io.on('connection', (socket) => {
   })
 })
 
+
 const PORT = process.env.PORT || 3001
+
 
 httpServer.listen(PORT, () => {
   logger.info(`🚀 Server running on http://localhost:${PORT}`)
   logger.info(`📊 Health check: http://localhost:${PORT}/health`)
+
+  startReminderJob()
+  startHabitRenewalJob()
 })
 
 export default app
