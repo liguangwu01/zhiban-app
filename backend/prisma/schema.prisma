@@ -1,12 +1,10 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [pgvector(map: "vector", schema: "public"), uuidOssp(map: "uuid-ossp")]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ==================== 用户 ====================
@@ -20,130 +18,132 @@ model User {
   isActive     Boolean   @default(true) @map("is_active")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime? @updatedAt @map("updated_at")
-  lastLoginAt  DateTime? @map("last_login_at")
   deletedAt    DateTime? @map("deleted_at")
 
-  // 关联
-  events              Event[]
-  reminders           Reminder[]
-  conversations       ConversationHistory[]
-  preferences         UserPreference?
-  insights            UserInsight?
-  refreshTokens       RefreshToken[]
+  events        Event[]
+  reminders     Reminder[]
+  conversations ConversationHistory[]
+  preferences   UserPreference?
+  insights      UserInsight?
+  memory        UserMemory?
+  refreshTokens RefreshToken[]
 
   @@map("users")
 }
 
 // ==================== 用户偏好 ====================
 model UserPreference {
-  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                String    @unique @map("user_id") @db.Uuid
-  homeLocation          Json?     @map("home_location")       // {name, lat, lng}
-  workLocation          Json?     @map("work_location")
-  doNotDisturbStart     String?   @map("do_not_disturb_start") // "22:00"
-  doNotDisturbEnd       String?   @map("do_not_disturb_end")   // "08:00"
-  preferredTravelMode   String?   @map("preferred_travel_mode") // driving/transit/walking
-  notificationMethods   Json      @default("[\"in_app\",\"web_push\"]") @map("notification_methods")
-  webPushSubscription   Json?     @map("web_push_subscription")
-  learningEnabled       Boolean   @default(true) @map("learning_enabled")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime? @updatedAt @map("updated_at")
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String    @unique @map("user_id") @db.Uuid
+  homeLocation        Json?     @map("home_location")
+  workLocation        Json?     @map("work_location")
+  doNotDisturbStart   String?   @map("do_not_disturb_start")
+  doNotDisturbEnd     String?   @map("do_not_disturb_end")
+  preferredTravelMode String?   @map("preferred_travel_mode")
+  notificationMethods Json      @default("[\"in_app\",\"web_push\"]") @map("notification_methods")
+  webPushSubscription Json?     @map("web_push_subscription")
+  learningEnabled     Boolean   @default(true) @map("learning_enabled")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime? @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@map("user_preferences")
 }
 
-// ==================== 用户习惯洞察（AI学习） ====================
+// ==================== 用户记忆（Markdown 格式，AI 维护） ====================
+model UserMemory {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  // AI 维护的用户画像，Markdown 格式
+  profile   String   @default("# 用户记忆档案\n\n## 基本信息\n- 姓名：未知\n\n## 出行偏好\n- 暂无记录\n\n## 重要联系人\n- 暂无记录\n\n## 健康习惯\n- 暂无记录\n\n## 用户偏好备注\n- 暂无记录")
+  // 最近事件摘要（AI 自动维护，最多保留20条）
+  recentEventsSummary String @default("暂无历史事件") @map("recent_events_summary")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_memory")
+}
+
+// ==================== 用户习惯洞察 ====================
 model UserInsight {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                  String    @unique @map("user_id") @db.Uuid
-  avgEarlyArrivalMinutes  Int       @default(10) @map("avg_early_arrival_minutes")
-  avgResponseTimeMinutes  Int?      @map("avg_response_time_minutes")
-  snoozeFrequency         Float?    @map("snooze_frequency")
-  bestReminderHours       Json?     @map("best_reminder_hours")  // [9, 10, 14, 15]
-  habitCompletionRates    Json?     @map("habit_completion_rates") // {habitId: rate}
-  learningDataExpiresAt   DateTime? @map("learning_data_expires_at")
-  lastAnalyzedAt          DateTime? @map("last_analyzed_at")
-  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at")
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  avgEarlyArrivalMinutes Int      @default(10) @map("avg_early_arrival_minutes")
+  avgResponseTimeMinutes Int?     @map("avg_response_time_minutes")
+  snoozeFrequency       Float?    @map("snooze_frequency")
+  bestReminderHours     Json?     @map("best_reminder_hours")
+  habitCompletionRates  Json?     @map("habit_completion_rates")
+  learningDataExpiresAt DateTime? @map("learning_data_expires_at")
+  lastAnalyzedAt        DateTime? @map("last_analyzed_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@map("user_insights")
 }
 
-// ==================== 事件（统一表） ====================
+// ==================== 事件 ====================
 model Event {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId        String    @map("user_id") @db.Uuid
   title         String
-  rawInput      String    @map("raw_input")         // 用户原始输入，永久保存
-  eventCategory String    @map("event_category")    // temporary | habit | long_term
-  eventType     String?   @map("event_type")        // meeting | travel | health | work | personal
-  status        String    @default("active")         // active | completed | cancelled
+  rawInput      String    @map("raw_input")
+  eventCategory String    @map("event_category") // temporary | habit | long_term
+  eventType     String?   @map("event_type")     // meeting | travel | health | work | personal
+  status        String    @default("active")
 
-  // 时间
-  startTime     DateTime? @map("start_time")
-  endTime       DateTime? @map("end_time")
-  targetDate    DateTime? @map("target_date")        // 远期事件用
+  startTime   DateTime? @map("start_time")
+  endTime     DateTime? @map("end_time")
+  targetDate  DateTime? @map("target_date")
 
-  // 地点
   locationName    String? @map("location_name")
   locationAddress String? @map("location_address")
   locationLat     Float?  @map("location_lat")
   locationLng     Float?  @map("location_lng")
 
-  // 人物
-  participants    Json?   // [{name, relationship}]
+  participants     Json?
+  recurrence       Json?
+  aiContext        Json?   @map("ai_context")
+  preparationItems Json?   @map("preparation_items")
+  checkList        Json?   @map("check_list")
 
-  // 习惯重复规则
-  recurrence      Json?   // {frequency, daysOfWeek, preferredTime, timeAnchor}
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  // AI 生成内容
-  aiContext         Json?   @map("ai_context")        // {intent, importance}
-  preparationItems  Json?   @map("preparation_items") // ["带合同", "确认地址"]
-  checkList         Json?   @map("check_list")        // 远期事件准备清单
-
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime? @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // 关联
   user      User       @relation(fields: [userId], references: [id])
   reminders Reminder[]
 
   @@index([userId, startTime])
   @@index([userId, eventCategory])
-  @@index([deletedAt])
   @@map("events")
 }
 
 // ==================== 提醒 ====================
 model Reminder {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  eventId         String    @map("event_id") @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  triggerAt       DateTime  @map("trigger_at")         // AI 决定的绝对触发时间
-  content         String                               // AI 生成的情境化提醒内容
-  actionSuggestions Json?   @map("action_suggestions") // ["现在叫车", "推迟15分钟"]
-  status          String    @default("pending")         // pending | sent | confirmed | snoozed | skipped
-  idempotencyKey  String    @unique @map("idempotency_key")
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId           String    @map("event_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  triggerAt         DateTime  @map("trigger_at")
+  content           String
+  actionSuggestions Json?     @map("action_suggestions")
+  status            String    @default("pending")
+  idempotencyKey    String    @unique @map("idempotency_key")
 
-  // 发送记录
-  sentAt          DateTime? @map("sent_at")
-  platformResponse Json?    @map("platform_response")
-  retryCount      Int       @default(0) @map("retry_count")
-  errorMessage    String?   @map("error_message")
+  sentAt           DateTime? @map("sent_at")
+  platformResponse Json?     @map("platform_response")
+  retryCount       Int       @default(0) @map("retry_count")
+  errorMessage     String?   @map("error_message")
 
-  // 用户响应
-  userAction      String?   @map("user_action")     // confirmed | snoozed | skipped
-  userActionAt    DateTime? @map("user_action_at")
-  snoozeUntil     DateTime? @map("snooze_until")
+  userAction   String?   @map("user_action")
+  userActionAt DateTime? @map("user_action_at")
+  snoozeUntil  DateTime? @map("snooze_until")
 
-  createdAt   DateTime  @default(now()) @map("created_at")
-  deletedAt   DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  // 关联
   event Event @relation(fields: [eventId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
 
@@ -154,13 +154,14 @@ model Reminder {
 
 // ==================== 对话历史 ====================
 model ConversationHistory {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  sessionId       String    @map("session_id")
-  role            String                    // user | assistant
-  content         String
-  functionCalls   Json?     @map("function_calls")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  sessionId     String   @map("session_id")
+  role          String   // user | assistant
+  content       String
+  functionCalls Json?    @map("function_calls")
+  inputType     String   @default("text") @map("input_type") // text | voice | image
+  createdAt     DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
