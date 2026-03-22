@@ -58,6 +58,7 @@ model UserMemory {
   // AI 维护的用户画像，Markdown 格式
   profile   String   @default("# 用户记忆档案\n\n## 基本信息\n- 姓名：未知\n\n## 出行偏好\n- 暂无记录\n\n## 重要联系人\n- 暂无记录\n\n## 健康习惯\n- 暂无记录\n\n## 用户偏好备注\n- 暂无记录")
   // 最近事件摘要（AI 自动维护，最多保留20条）
+  behaviorMemory       String   @default("")   // ← 新增这一行
   recentEventsSummary String @default("暂无历史事件") @map("recent_events_summary")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

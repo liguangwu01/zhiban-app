@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
 import prisma from '../utils/db'
 import { JwtPayload } from '../types'
+import { SignOptions } from 'jsonwebtoken'
 
 export class AuthService {
   // 注册
@@ -100,8 +101,8 @@ export class AuthService {
     const payload: JwtPayload = { userId, email }
 
     const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, {
-      expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '2h',
-    })
+      expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '2h') as SignOptions['expiresIn'],
+    }) 
 
     const refreshToken = uuidv4()
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30天

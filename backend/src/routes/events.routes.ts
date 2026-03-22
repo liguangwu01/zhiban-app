@@ -42,7 +42,7 @@ router.get('/', async (req: Request, res: Response) => {
 // 获取单个事件
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId
+    const userId = req.user!.userId as string
     const event = await prisma.event.findFirst({
       where: { id: req.params.id, userId, deletedAt: null },
       include: { reminders: { orderBy: { triggerAt: 'asc' } } },
@@ -60,7 +60,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId
     await prisma.event.updateMany({
-      where: { id: req.params.id, userId },
+      where: { id: req.params.id as string, userId },
       data: { deletedAt: new Date() },
     })
     res.json({ success: true })

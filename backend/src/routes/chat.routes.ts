@@ -53,7 +53,7 @@ router.post('/message', async (req: Request, res: Response) => {
 // 获取对话历史
 router.get('/history/:sessionId', async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId
+    const userId = req.user!.userId as string
     const { sessionId } = req.params
     const conversations = await memoryService.getRecentConversations(userId, sessionId, 50)
     res.json({ success: true, data: conversations })
